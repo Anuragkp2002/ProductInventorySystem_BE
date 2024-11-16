@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Products, ProductsVariation, Attributes, AttributeValues, VariationAttributes
+from .models import Products, ProductsVariation, Attributes, AttributeValues, VariationAttributes, Option, Variant
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.authentication import authenticate
@@ -58,46 +58,73 @@ class TokenSerializer(serializers.Serializer):
     refresh = serializers.CharField()
     access = serializers.CharField()
 
-
-class AttributeValueSerializer(serializers.ModelSerializer):
+class OptionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AttributeValues
-        fields = ('id', 'AttributeValue')
+        model = Option
+        fields = ['id', 'name']
 
-
-class VariationAttributesSerializer(serializers.ModelSerializer):
-    AttributeValue = AttributeValueSerializer()
+class VariantSerializer(serializers.ModelSerializer):
+    options = OptionSerializer(many=True)
 
     class Meta:
-        model = VariationAttributes
-        fields = ('id', 'AttributeValue')
-
+        model = Variant
+        fields = ['id', 'name', 'options']
 
 class ProductsVariationSerializer(serializers.ModelSerializer):
-    attributes = VariationAttributesSerializer(many=True)
+    variants = VariantSerializer(many=True)
 
     class Meta:
         model = ProductsVariation
-        fields = ('id', 'DisplayName', 'ProductCode',
-                  'ProductImage', 'TotalStock', 'attributes')
-
+        fields = ['id', 'DisplayName', 'ProductCode', 'ProductImage', 'TotalStock', 'variants']
 
 class ProductsSerializer(serializers.ModelSerializer):
     variations = ProductsVariationSerializer(many=True)
 
     class Meta:
         model = Products
-        # fields = ('id', 'ProductID', 'ProductCode', 'ProductName', 'ProductImage', 'CreatedDate', 'UpdatedDate', 'CreatedUser', 'IsFavourite', 'Active', 'HSNCode', 'TotalStock', 'variations')
-        fields = '__all__'
+        fields = ['id', 'ProductID', 'ProductCode', 'ProductName', 'ProductImage', 'CreatedDate', 
+                  'UpdatedDate', 'CreatedUser', 'IsFavourite', 'Active', 'HSNCode', 'TotalStock', 'variations']
 
 
-class AttributeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Attributes
-        fields = ('id', 'AttributeName')
+# class AttributeValueSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = AttributeValues
+#         fields = ('id', 'AttributeValue')
 
 
-class AttributeValueCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = AttributeValues
-        fields = ('id', 'Attribute', 'AttributeValue')
+# class VariationAttributesSerializer(serializers.ModelSerializer):
+#     AttributeValue = AttributeValueSerializer()
+
+#     class Meta:
+#         model = VariationAttributes
+#         fields = ('id', 'AttributeValue')
+
+
+# class ProductsVariationSerializer(serializers.ModelSerializer):
+#     attributes = VariationAttributesSerializer(many=True)
+
+#     class Meta:
+#         model = ProductsVariation
+#         fields = ('id', 'DisplayName', 'ProductCode',
+#                   'ProductImage', 'TotalStock', 'attributes')
+
+
+# class ProductsSerializer(serializers.ModelSerializer):
+#     variations = ProductsVariationSerializer(many=True)
+
+#     class Meta:
+#         model = Products
+#         # fields = ('id', 'ProductID', 'ProductCode', 'ProductName', 'ProductImage', 'CreatedDate', 'UpdatedDate', 'CreatedUser', 'IsFavourite', 'Active', 'HSNCode', 'TotalStock', 'variations')
+#         fields = '__all__'
+
+
+# class AttributeSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Attributes
+#         fields = ('id', 'AttributeName')
+
+
+# class AttributeValueCreateSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = AttributeValues
+#         fields = ('id', 'Attribute', 'AttributeValue')

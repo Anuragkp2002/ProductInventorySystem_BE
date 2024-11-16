@@ -5,12 +5,14 @@ from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Products, ProductsVariation, Attributes, AttributeValues
-from .serializers import ProductsSerializer, ProductsVariationSerializer, AttributeSerializer, AttributeValueCreateSerializer, UserSignupSerializer, UserProfileSerializer, UserUpdateProfileSerializer, LoginSerializer, TokenSerializer
+from .models import Products, ProductsVariation, Attributes, AttributeValues, VariationAttributes, Variant, Option
+from .serializers import ProductsSerializer, ProductsVariationSerializer, UserSignupSerializer, UserProfileSerializer, UserUpdateProfileSerializer, LoginSerializer, TokenSerializer
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.db import transaction
 from drf_yasg.utils import swagger_auto_schema
+from django.db.models import Prefetch
 
 
 # class ObtainJWTToken(APIView):
@@ -116,44 +118,109 @@ class StandardResultsSetPagination(PageNumberPagination):
     max_page_size = 100
 
 
-class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Products.objects.all()
-    serializer_class = ProductsSerializer
-    pagination_class = StandardResultsSetPagination
+class ProductViewSet(APIView):
     permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        operation_description="Add stock to product variation",
-        responses={200: 'Stock added'},
-    )
-    @action(detail=True, methods=['post'])
-    def add_stock(self, request, pk=None):
-        product_variation = self.get_object().variations.get(
-            id=request.data.get('variation_id'))
-        product_variation.TotalStock += request.data.get('stock_quantity', 0)
-        product_variation.save()
-        return Response({'status': 'stock added'})
+    def post(self, request, *args, **kwargs):
+        with transaction.atomic():
+            product_data = request.data
 
-    @swagger_auto_schema(
-        operation_description="Remove stock from product variation",
-        responses={200: 'Stock removed'},
-    )
-    @action(detail=True, methods=['post'])
-    def remove_stock(self, request, pk=None):
-        product_variation = self.get_object().variations.get(
-            id=request.data.get('variation_id'))
-        product_variation.TotalStock -= request.data.get('stock_quantity', 0)
-        product_variation.save()
-        return Response({'status': 'stock removed'})
+            try:
+                created_user_id = product_data.get("CreatedUser")
+                product = Products.objects.create(
+                    ProductID=product_data.get("ProductID"),
+                    ProductCode=product_data.get("ProductCode"),
+                    ProductName=product_data.get("ProductName"),
+                    ProductImage=product_data.get("ProductImage", None),
+                    CreatedUser_id=created_user_id,
+                    IsFavourite=product_data.get("IsFavourite", False),
+                    Active=product_data.get("Active", True),
+                    HSNCode=product_data.get("HSNCode", None),
+                    TotalStock=product_data.get("TotalStock", 0.00)
+                )
+
+                for variant_data in product_data.get("variants", []):
+                    variation = ProductsVariation.objects.create(
+                        Product=product,
+                        DisplayName=variant_data["name"],
+                        ProductCode=variant_data["name"].upper(),
+                        TotalStock=product_data.get("TotalStock", 0.00)
+                    )
+
+                    for option_name in variant_data.get("options", []):
+                        variant = Variant.objects.create(
+                            product=variation,
+                            name=option_name
+                        )
+                        Option.objects.create(
+                            variant=variant,
+                            name=option_name
+                        )
+
+                serializer = ProductsSerializer(product)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, *args, **kwargs):
+        products = Products.objects.all()
+        
+        serializer = ProductsSerializer(products, many=True)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @transaction.atomic
+    def post_add_stock(self, request, *args, **kwargs):
+        product_variation_id = request.data.get("variation_id")
+        stock_quantity = request.data.get("stock_quantity", 0)
+        product = request.data.get("product")
+        
+        if not product_variation_id or stock_quantity <= 0:
+            return Response({"error": "Invalid data provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product_variation = ProductsVariation.objects.get(id=product_variation_id, Product=product)
+
+            product_variation.TotalStock += stock_quantity
+            product_variation.save()
+
+            return Response({"status": "Stock added successfully."}, status=status.HTTP_200_OK)
+
+        except ProductsVariation.DoesNotExist:
+            return Response({"error": "Product variation not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    @transaction.atomic
+    def post_remove_stock(self, request, *args, **kwargs):
+        product_variation_id = request.data.get("variation_id")
+        stock_quantity = request.data.get("stock_quantity", 0)
+        
+        if not product_variation_id or stock_quantity <= 0:
+            return Response({"error": "Invalid data provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product_variation = ProductsVariation.objects.get(id=product_variation_id)
+
+            if product_variation.TotalStock < stock_quantity:
+                return Response({"error": "Insufficient stock to remove."}, status=status.HTTP_400_BAD_REQUEST)
+
+            product_variation.TotalStock -= stock_quantity
+            product_variation.save()
+
+            return Response({"status": "Stock removed successfully."}, status=status.HTTP_200_OK)
+
+        except ProductsVariation.DoesNotExist:
+            return Response({"error": "Product variation not found."}, status=status.HTTP_404_NOT_FOUND)
+  
 
 
-class AttributeViewSet(viewsets.ModelViewSet):
-    queryset = Attributes.objects.all()
-    serializer_class = AttributeSerializer
-    permission_classes = [IsAuthenticated]
+# class AttributeViewSet(viewsets.ModelViewSet):
+#     queryset = Attributes.objects.all()
+#     serializer_class = AttributeSerializer
+#     permission_classes = [IsAuthenticated]
 
 
-class AttributeValueViewSet(viewsets.ModelViewSet):
-    queryset = AttributeValues.objects.all()
-    serializer_class = AttributeValueCreateSerializer
-    permission_classes = [IsAuthenticated]
+# class AttributeValueViewSet(viewsets.ModelViewSet):
+#     queryset = AttributeValues.objects.all()
+#     serializer_class = AttributeValueCreateSerializer
+#     permission_classes = [IsAuthenticated]
