@@ -23,6 +23,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
+# Define the Bearer token security parameter for Swagger UI
 # schema_view = get_schema_view(
 #     openapi.Info(
 #         title="Inventory API",
