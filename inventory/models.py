@@ -49,6 +49,24 @@ class ProductsVariation(models.Model):
         db_table = "products_variation"
         ordering = ("-CreatedDate",)
 
+
+class Variant(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    product = models.ForeignKey(ProductsVariation, related_name='variants', on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
+
+class Option(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    variant = models.ForeignKey(Variant, related_name='options', on_delete=models.CASCADE)
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
+
+
 class Attributes(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     AttributeName = models.CharField(max_length=255)
