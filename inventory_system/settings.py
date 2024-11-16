@@ -78,6 +78,17 @@ TEMPLATES = [
 WSGI_APPLICATION = 'inventory_system.wsgi.application'
 
 
+# SWAGGER_SETTINGS = {
+#     'SECURITY_DEFINITIONS': {
+#         'Bearer': {
+#             'type': 'apiKey',
+#             'name': 'Authorization',
+#             'in': 'header',
+#             'description': 'Enter JWT token as: "Bearer <your_token>"'
+#         }
+#     },
+#     'USE_SESSION_AUTH': False,  # Optional: disable session-based authentication in Swagger
+# }
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
         "Auth Token eg [Bearer (JWT)]": {
@@ -97,7 +108,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated',
+    'rest_framework.permissions.IsAuthenticated',
     )
 }
 # REST_FRAMEWORK = {
@@ -107,6 +118,11 @@ REST_FRAMEWORK = {
 #     'DEFAULT_PERMISSION_CLASSES': (
 #         'rest_framework.permissions.IsAuthenticated',
 #     ),
+# }
+
+# SIMPLE_JWT = {
+#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 # }
 
 # Database
